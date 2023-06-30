@@ -81,7 +81,7 @@ class Quantum_Circuit:
         return Z
     
     def direct_sum(self, a : np.matrix, b : np.matrix) -> np.matrix:
-        c = np.kron(a, np.eye(b.shape[0])) + np.kron(np.eye(a.shape[0]), b) # thanks chatgpt
+        c = np.block([[a, np.zeros_like(a)], [np.zeros_like(b), b]])
         return c
     
 
