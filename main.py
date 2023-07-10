@@ -2,7 +2,7 @@
 # this time, the simulator will do the following:
 # parallel gates ✔
 # 2-qubit gates ✔
-# n-qubit gates (should not be that hard honestly)
+# n-qubit gates (should not be that hard honestly) (no longer necessary because the user has access to a complete gate set (clifford + T))
 # a visual section so that you know what your circuit looks like
 
 # my plan:
@@ -13,11 +13,12 @@ import numpy as np
 from sympy import *
 
 class Quantum_Circuit:
-    def __init__(self, num_qubits, mode) -> None:
+    def __init__(self, num_qubits, mode = "none") -> None:
         self.num_qubits = num_qubits # how many qubits does our circuit operate on?
         self.matrix = np.eye(2**num_qubits, dtype=complex)
         self.visual_circuit = "" # the visual part
         self.mode = mode # mode means printing like ibmq (with reversed endian) or not.
+        self._u_values = np.matrix('1, 0; 0, 1')
     
     def make_column(self,column : list) -> None: # column is the list of tuples. each tuple will include the following information: gate type, qubit-that-is-being-acted-on, and if necessary, information that is pertinent to the gate (rotations, controls)
         # example input: column = [("h", 0), ("x",1), ("x",2)]
@@ -91,17 +92,17 @@ class Quantum_Circuit:
             array[i], array[new_spot] = array[new_spot], array[i]
         return np.asmatrix(array)
             
-
     def _logic(self, strnput) -> np.ndarray: # strnpt is a portmanteau of string input
         all_outputs = { # created to make it easier to return functions, as well as keep the code clean
             "i": self._i(),
             "h": self._h(),
             "x": self._x(),
             "y": self._y(),
-            "z": self._z(), # complete gate set formed by H, T, S, and CNOT
+            "z": self._z(), # complete gate set formed by H, T, S, and CNOT (Clifford + T)
             "t": self._t(),
             "tdg": self._tdg(),
             "s": self._s(),
+            "u": self._u(),
             "cx": self._cx(),
             "swap": self._swap(),
             "cz": self._cz()
@@ -138,8 +139,15 @@ class Quantum_Circuit:
         return TDG
     
     def _s(self) -> np.ndarray: # phase gate
-        S = np.matrix("1, 0; 0, j")
+        S = np.matrix("1, 0; 0, 1j")
         return S
+    
+    def _u(self) -> np.ndarray: # arbitrary u gate with associated change_u() elsewhere
+        U = self._u_values # starts out as I
+        return U # should work for arbitrary size, because the qubits that this gate will act on are not defined here anyway.
+    
+    def change_u(self, new_values : np.matrix) -> None:
+        self._u_values = new_values
 
     def _cx(self) -> np.ndarray:
         # CX = self._direct_sum(self._i(), self._x()) # works backwards for some reason :( incorrect behavior :(
@@ -161,31 +169,38 @@ class Quantum_Circuit:
         return c
 
 
-num_qubits = 3
+num_qubits = 2
 
 qc = Quantum_Circuit(num_qubits, "ibmq")
+# qc = Quantum_Circuit(num_qubits)
+
 
 # qc.make_column([("h",0), ("h", 1), ("h",2)])
 # qc.make_column([("z",1)])
 # qc.make_column([("h",1), ("h",2)])]
 
-qc.make_column([("h",0), ("h",1)])
+# qc.make_column([("h",0), ("h",1), ("h",2), ("h",3), ("h",4)])
+# qc.make_column([("cx",(0,1)), ("z",2)])
+# qc.make_column([("y",1)])
 
-# toffoli gate with qubits 0 and 1 as controls and qubit 2 as the target
-qc.make_column([("h",2)])
-qc.make_column([("cx",(1,2))])
-qc.make_column([("swap", (0,1)), ("tdg", 2)])
-qc.make_column([("cx",(1,2))])
-qc.make_column([("swap", (0,1)), ("t", 2)])
-qc.make_column([("cx",(1,2))])
-qc.make_column([("swap", (0,1)), ("tdg", 2)])
-qc.make_column([("cx",(1,2))])
-qc.make_column([("swap", (0,1))])
-qc.make_column([("t",1), ("t", 2)])
-qc.make_column([("cx", (0,1)), ("h",2)])
-qc.make_column([("t", 0), ("tdg",1)])
-qc.make_column([("cx", (0,1))])
+# # toffoli gate with qubits 0 and 1 as controls and qubit 2 as the target
+# qc.make_column([("h",2)])
+# qc.make_column([("cx",(1,2))])
+# qc.make_column([("swap", (0,1)), ("tdg", 2)])
+# qc.make_column([("cx",(1,2))])
+# qc.make_column([("swap", (0,1)), ("t", 2)])
+# qc.make_column([("cx",(1,2))])
+# qc.make_column([("swap", (0,1)), ("tdg", 2)])
+# qc.make_column([("cx",(1,2))])
+# qc.make_column([("swap", (0,1))])
+# qc.make_column([("t",1), ("t", 2)])
+# qc.make_column([("cx", (0,1)), ("h",2)])
+# qc.make_column([("t", 0), ("tdg",1)])
+# qc.make_column([("cx", (0,1))])
 
+invcx = np.matrix("0, 0, 1, 0; 0, 0, 0, 1; 0, 1, 0, 0; 1, 0, 0, 0")
+qc.change_u(invcx)
+qc.make_column([("u", (0,1))])
 
 # qc.make_column([("h",0), ("h",1)])
 # qc.make_column([("cz", (0,1))])
