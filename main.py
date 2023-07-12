@@ -36,7 +36,7 @@ class Quantum_Circuit:
         if len(column)+two_qubit_gates != self.num_qubits: # this loop only occurs if the circuit doesn't have gates on all qubits.
             all_qubits = set(range(0,self.num_qubits)) # using set operations
             single_gate_qubits = set([column[i][1] for i in range(0,len(column)) if type(column[i][1]) == int])
-            multi_gate_qubits = set(sum([list(item[1]) for item in column if type(item[1]) == tuple],[])) # found this solution online but god damn. **********very likely to break with 3-qubit gates
+            multi_gate_qubits = set(sum([list(item[1]) for item in column if type(item[1]) == tuple],[])) # found this solution online and god damn. **********very likely to break with 3-qubit gates
             acting_qubits = single_gate_qubits.union(multi_gate_qubits)
             # print(acting_qubits)
             unaltered_qubits = all_qubits - acting_qubits
@@ -46,34 +46,31 @@ class Quantum_Circuit:
                     column.insert(i, ("i", i)) # should be all fixed after this line
         
 
-        # print(column)
+        print(column)
         # print(column[0])
         i = 1 # using a while loop so that we can skip by 2 for 2-qubit gates, or by 3 for 3-qubit ones, whatever's necessary
-        
-        # print("applying:", column[0][0])
         if type(column[0][1]) == int:
             column_matrix = self._logic(column[0][0])
         else: # starting with a 2-qubit gate
-            # print("applying 2qubit gate1")
+            print("applying 2qubit gate1")
             column_matrix = self._logic(column[0][0])
-            completed_two_qubit_gates+=1
-            i+=1
+            completed_two_qubit_gates+=len(column[0][1])-1
+            i+=len(column[0][1])-1
+        
         while i < self.num_qubits: # skip the first qubit because we need to make the column matrix at some point (before this loop); (if num_qubits == 1, the loop doesn't happen anyway.)
             gate_information = column[i-completed_two_qubit_gates]
-            # print("applying:", gate_information[0])
-            # print(column_matrix, i, completed_two_qubit_gates)
+            print(column_matrix, i, completed_two_qubit_gates)
             # print(gate_information)
-            # print("kronning", column_matrix, "with", self._logic(gate_information[0]))
             if type(gate_information[1]) == int: # 1 qubit gates are just applied on one gate (n ∈ ℕ)
                 column_matrix = np.kron(column_matrix, self._logic(gate_information[0]))
                 i+=1
             else: # if it's not a 1 qubit gate then its gotta be at least a 2-qubit one
-                # print("applying 2qubit gate2")
+                print("applying 2qubit gate2", "len(gate_information[1]) =", len(gate_information[1]))
                 column_matrix = np.kron(column_matrix, self._logic(gate_information[0]))
-                completed_two_qubit_gates+=1
-                i+=2 # for a 2 qubit gate we kron with the 4x4 matrix and skip a qubit (because that's how it works yo).
+                completed_two_qubit_gates+=len(gate_information[1])-1
+                i+=len(gate_information[1])-1 # for a 2 qubit gate we kron with the 4x4 matrix and skip a qubit (because that's how it works yo).
                 # *************** to change this to any n-qubit gate just change "i+=2" to "i+=len(gate_information[1])", i think
-        # print(column_matrix, i, completed_two_qubit_gates)
+        print(column_matrix, i, completed_two_qubit_gates)
         self.matrix = column_matrix @ self.matrix
 
     def print_matrix(self) -> None:
@@ -87,7 +84,7 @@ class Quantum_Circuit:
         if self.mode == "ibmq": # sort by 
             self._ibmq_sort(output)
         return output
-
+    
     def _ibmq_sort(self, values : np.matrix) -> None:
         # we want to swap values based on the inverse of their position in the list (as a binary number)
         array = np.squeeze(np.asarray(values))
@@ -113,7 +110,8 @@ class Quantum_Circuit:
             "u": self._u(),
             "cx": self._cx(),
             "swap": self._swap(),
-            "cz": self._cz()
+            "cz": self._cz(),
+            "ccx": self._ccx()
             # with more room for additions
         }
         return all_outputs[strnput]
@@ -171,6 +169,10 @@ class Quantum_Circuit:
     def _cz(self) -> np.ndarray:
         CZ = np.matrix("1, 0, 0, 0; 0, 1, 0, 0; 0, 0, 1, 0; 0, 0, 0, -1")
         return CZ
+    
+    def _ccx(self) -> np.ndarray:
+        CCX = np.matrix("1, 0, 0, 0, 0, 0, 0, 0; 0, 1, 0, 0, 0, 0, 0, 0; 0, 0, 1, 0, 0, 0, 0, 0; 0, 0, 0, 1, 0, 0, 0, 0; 0, 0, 0, 0, 1, 0, 0, 0; 0, 0, 0, 0, 0, 1, 0, 0; 0, 0, 0, 0, 0, 0, 0, 1; 0, 0, 0, 0, 0, 0, 1, 0")
+        return CCX
 
     def _direct_sum(self, a : np.matrix, b : np.matrix) -> np.matrix:
         c = np.block([[a, np.zeros_like(a)], [np.zeros_like(b), b]])
@@ -183,12 +185,14 @@ qc = Quantum_Circuit(num_qubits, "ibmq")
 # qc = Quantum_Circuit(num_qubits)
 
 
-qc.make_column([("h",0), ("h",1)])
+# qc.make_column([("h",0), ("h", 1), ("h",2)])
 # qc.make_column([("z",1)])
-# qc.make_column([("h",0), ("h",1)])
+qc.make_column([("h",0)])
+qc.make_column([("cx", (0,1))])
+qc.make_column([("ccx", (0, 1, 2))])
 
 # qc.make_column([("h",0), ("h",1), ("h",2), ("h",3), ("h",4)])
-# qc.make_column([("cx",(0,1))])
+# qc.make_column([("cx",(0,1)), ("z",2)])
 # qc.make_column([("y",1)])
 
 # # toffoli gate with qubits 0 and 1 as controls and qubit 2 as the target
