@@ -49,6 +49,8 @@ class Quantum_Circuit:
         # print(column)
         # print(column[0])
         i = 1 # using a while loop so that we can skip by 2 for 2-qubit gates, or by 3 for 3-qubit ones, whatever's necessary
+        
+        # print("applying:", column[0][0])
         if type(column[0][1]) == int:
             column_matrix = self._logic(column[0][0])
         else: # starting with a 2-qubit gate
@@ -58,8 +60,10 @@ class Quantum_Circuit:
             i+=1
         while i < self.num_qubits: # skip the first qubit because we need to make the column matrix at some point (before this loop); (if num_qubits == 1, the loop doesn't happen anyway.)
             gate_information = column[i-completed_two_qubit_gates]
+            # print("applying:", gate_information[0])
             # print(column_matrix, i, completed_two_qubit_gates)
             # print(gate_information)
+            # print("kronning", column_matrix, "with", self._logic(gate_information[0]))
             if type(gate_information[1]) == int: # 1 qubit gates are just applied on one gate (n ∈ ℕ)
                 column_matrix = np.kron(column_matrix, self._logic(gate_information[0]))
                 i+=1
@@ -83,13 +87,17 @@ class Quantum_Circuit:
         if self.mode == "ibmq": # sort by 
             self._ibmq_sort(output)
         return output
-    
+
     def _ibmq_sort(self, values : np.matrix) -> None:
         # we want to swap values based on the inverse of their position in the list (as a binary number)
         array = np.squeeze(np.asarray(values))
-        for i in range(0, array.shape[0]//2): # only loop through half of the list because otherwise we'd swap back.
+        moved_values = []
+        for i in range(0, array.shape[0]): # only loop through half of the list because otherwise we'd swap back.
             new_spot = int(format(i, f"0{self.num_qubits}b")[::-1],2) # help from stack overflow
-            array[i], array[new_spot] = array[new_spot], array[i]
+            if i not in moved_values and new_spot not in moved_values:
+                array[i], array[new_spot] = array[new_spot], array[i]
+                moved_values.append(i)
+                moved_values.append(new_spot)
         return np.asmatrix(array)
             
     def _logic(self, strnput) -> np.ndarray: # strnpt is a portmanteau of string input
@@ -169,18 +177,18 @@ class Quantum_Circuit:
         return c
 
 
-num_qubits = 2
+num_qubits = 4
 
 qc = Quantum_Circuit(num_qubits, "ibmq")
 # qc = Quantum_Circuit(num_qubits)
 
 
-# qc.make_column([("h",0), ("h", 1), ("h",2)])
+qc.make_column([("h",0), ("h",1)])
 # qc.make_column([("z",1)])
-# qc.make_column([("h",1), ("h",2)])]
+# qc.make_column([("h",0), ("h",1)])
 
 # qc.make_column([("h",0), ("h",1), ("h",2), ("h",3), ("h",4)])
-# qc.make_column([("cx",(0,1)), ("z",2)])
+# qc.make_column([("cx",(0,1))])
 # qc.make_column([("y",1)])
 
 # # toffoli gate with qubits 0 and 1 as controls and qubit 2 as the target
@@ -198,9 +206,9 @@ qc = Quantum_Circuit(num_qubits, "ibmq")
 # qc.make_column([("t", 0), ("tdg",1)])
 # qc.make_column([("cx", (0,1))])
 
-invcx = np.matrix("0, 0, 1, 0; 0, 0, 0, 1; 0, 1, 0, 0; 1, 0, 0, 0")
-qc.change_u(invcx)
-qc.make_column([("u", (0,1))])
+# invcx = np.matrix("0, 0, 1, 0; 0, 0, 0, 1; 0, 1, 0, 0; 1, 0, 0, 0")
+# qc.change_u(invcx)
+# qc.make_column([("u", (0,1))])
 
 # qc.make_column([("h",0), ("h",1)])
 # qc.make_column([("cz", (0,1))])
