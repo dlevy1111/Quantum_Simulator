@@ -2,11 +2,11 @@
 # this time, the simulator will do the following:
 # parallel gates ✔
 # 2-qubit gates ✔
-# n-qubit gates (should not be that hard honestly) (no longer necessary because the user has access to a complete gate set (clifford + T))
+# n-qubit gates (should not be that hard honestly) (no longer necessary because the user has access to a complete gate set (clifford + T)) ✔
 # a visual section so that you know what your circuit looks like
 
 # my plan:
-# instead of making the circuit gate by gate, the simulator will make it column bu column
+# instead of making the circuit gate by gate, the simulator will make it column by column
 # this will be done by the user, who will specify all parallel gates, as opposed to specifying gates serially
 
 import numpy as np
@@ -26,6 +26,10 @@ class Quantum_Circuit:
         # self.graphic_designer(column) # a method that creates the picture
         # second example: column = [("cnot", (0, 1)), ("h", 2)]
         
+        self.matrix = self.return_column(column) @ self.matrix
+        
+    
+    def return_column(self,column : list) -> None:
         two_qubit_gates = 0 # 2-qubit gates look like 1-qubit gates to the logic (because the len(column) doesn't reflect the tuple of control and target bits)
         completed_two_qubit_gates = 0 # because of the above note, we need to keep track of whether or not we've calculate a 2-qubit gate into the column matrix
         for gate_information in column:
@@ -68,15 +72,20 @@ class Quantum_Circuit:
                 # print("applying 2qubit gate2", "len(gate_information[1]) =", len(gate_information[1]))
                 column_matrix = np.kron(column_matrix, self._logic(gate_information[0]))
                 completed_two_qubit_gates+=len(gate_information[1])-1
-                i+=len(gate_information[1])-1 # for a 2 qubit gate we kron with the 4x4 matrix and skip a qubit (because that's how it works yo).
+                i+=len(gate_information[1])-1+1 # for a 2 qubit gate we kron with the 4x4 matrix and skip a qubit (because that's how it works yo).
                 # *************** to change this to any n-qubit gate just change "i+=2" to "i+=len(gate_information[1])", i think
         # print(column_matrix, i, completed_two_qubit_gates)
-        self.matrix = column_matrix @ self.matrix
+        return column_matrix
 
     def print_matrix(self) -> None:
         init_printing()
         matrix_out = Matrix(self.matrix)
         pprint(matrix_out)
+    
+    def print_statevector(self) -> None:
+        init_printing()
+        statevector = self.output_statevector()
+        pprint(Matrix(statevector))
     
     def output_statevector(self) -> np.ndarray:
         statevector = np.append(np.ones(1), np.zeros((2**(self.num_qubits)-1,1)))
@@ -156,13 +165,10 @@ class Quantum_Circuit:
         self._u_values = new_values
 
     def _cx(self) -> np.ndarray:
-        # CX = self._direct_sum(self._i(), self._x()) # works backwards for some reason :( incorrect behavior :(
         CX = np.matrix("1, 0, 0, 0; 0, 1, 0, 0; 0, 0, 0, 1; 0, 0, 1, 0")
-        # CX = np.matrix("1, 0, 0, 0; 0, 0, 0, 1; 0, 0, 1, 0; 0, 1, 0, 0")
         return CX
     
     def _swap(self) -> np.ndarray: # seems to work fine??
-        # SWAP = self._cnot() @ ( np.kron(self._h(), self._h()) @ self._cnot() @ np.kron(self._h(), self._h()) ) @ self._cnot() # it's a mess but this is the breakdown of the swap matrix
         SWAP = np.matrix("1, 0, 0, 0; 0, 0, 1, 0; 0, 1, 0, 0; 0, 0, 0, 1")
         return SWAP
     
@@ -177,23 +183,42 @@ class Quantum_Circuit:
     def _direct_sum(self, a : np.matrix, b : np.matrix) -> np.matrix:
         c = np.block([[a, np.zeros_like(a)], [np.zeros_like(b), b]])
         return c
+    
+    def get_gate(self, gate) -> np.ndarray:
+        return self._logic(gate)
 
 
-num_qubits = 4
 
-qc = Quantum_Circuit(num_qubits, "ibmq")
-# qc = Quantum_Circuit(num_qubits)
+num_qubits = 2
+qc = Quantum_Circuit(num_qubits)
 
 
 # qc.make_column([("h",0), ("h", 1), ("h",2)])
 # qc.make_column([("z",1)])
-qc.make_column([("h",0)])
-qc.make_column([("cx", (0,1))])
-qc.make_column([("ccx", (0, 1, 2))])
+# qc.make_column([("h",0)])
+# qc.make_column([("cx", (0,1))])
+# qc.make_column([("ccx", (0, 1, 2))])
 
 # qc.make_column([("h",0), ("h",1), ("h",2), ("h",3), ("h",4)])
 # qc.make_column([("cx",(0,1)), ("z",2)])
 # qc.make_column([("y",1)])
+
+# qc.make_column([("cx", (0,1)), ("h", 1)])
+
+# # toffoli gate with qubits 0 and 1 as controls and qubit 2 as the target
+# qc.make_column([("h",2)])
+# qc.make_column([("cx",(1,2))])
+# qc.make_column([("swap", (0,1)), ("tdg", 2)])
+# qc.make_column([("cx",(1,2))])
+# qc.make_column([("swap", (0,1)), ("t", 2)])
+# qc.make_column([("cx",(1,2))])
+# qc.make_column([("swap", (0,1)), ("tdg", 2)])
+# qc.make_column([("cx",(1,2))])
+# qc.make_column([("swap", (0,1))])
+# qc.make_column([("t",1), ("t", 2)])
+# qc.make_column([("cx", (0,1)), ("h",2)])
+# qc.make_column([("t", 0), ("tdg",1)])
+# qc.make_column([("cx", (0,1))])
 
 # invcx = np.matrix("0, 0, 1, 0; 0, 0, 0, 1; 0, 1, 0, 0; 1, 0, 0, 0")
 # qc.change_u(invcx)
@@ -201,6 +226,44 @@ qc.make_column([("ccx", (0, 1, 2))])
 
 # qc.make_column([("h",0), ("h",1)])
 # qc.make_column([("cz", (0,1))])
+
+# qc.make_column([("h",0)])
+# qc.make_column([("cx", (0,1))])
+# qc.make_column([("swap", (1,2))])
+# qc.make_column([("cx", (1,2))])
+
+'''
+#Bernstein Vazirani Circuit, i don't know if it works..
+qc.make_column([("x", 4)])
+qc.make_column([("h", 0), ("h", 1), ("h", 2), ("h", 3), ("h", 4)])
+
+qc.make_column([("swap", (3,4))])
+qc.make_column([("cx", (2,3))])
+qc.make_column([("swap", (1,2))])
+qc.make_column([("cx", (2,3))])
+qc.make_column([("swap", (1,2)), ("swap", (3,4))])
+
+qc.make_column([("h", 0), ("h", 1), ("h", 2), ("h", 3), ("h", 4)])
+'''
+
+# qc.make_column([("cz",(1,2))])
+# qc.make_column([("swap", (0,1))])
+# qc.make_column([("cz",(1,2))])
+
+# qc.make_column([("x",0)])
+# qc.make_column([("z",0), ("z",1)])
+# qc.make_column([("swap",(1,2))])
+# qc.make_column([("cz",(0,1))])
+# qc.make_column([("cz",(1,2))])
+# qc.make_column([("swap",(1,2))])
+# qc.make_column([("x",0)])
+
+# qc.make_column([("cz",(0,1))])
+# qc.make_column([("cz",(1,2))])
+# qc.make_column([("swap", (1,2))])
+# qc.make_column([("cz",(0,1))])
+
+qc.make_column([("h", 1), ("x", 0)])
 
 statevector = qc.output_statevector()
 
