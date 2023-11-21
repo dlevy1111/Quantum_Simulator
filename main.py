@@ -20,18 +20,22 @@ class Quantum_Circuit:
         self.mode = mode # mode means printing like ibmq (with reversed endian) or not.
         self._u_values = np.matrix('1, 0; 0, 1')
     
-    def make_column(self,column : list) -> None: # column is the list of tuples. each tuple will include the following information: gate type, qubit-that-is-being-acted-on, and if necessary, information that is pertinent to the gate (rotations, controls)
+    def make_column(self, column : list) -> None: # column is the list of tuples. each tuple will include the following information: gate type, qubit-that-is-being-acted-on, and if necessary, information that is pertinent to the gate (rotations, controls)
         # example input: column = [("h", 0), ("x",1), ("x",2)]
         # the user won't have to specify qubits that don't have gates operating on them (i.e. identity operations)
         # self.graphic_designer(column) # a method that creates the picture
         # second example: column = [("cnot", (0, 1)), ("h", 2)]
-        
+        self.sort_column(column) # sorting the column just in case it's out of order...
+
         self.matrix = self.return_column(column) @ self.matrix
         
     
-    def return_column(self,column : list) -> None:
+    def return_column(self, column : list) -> None:
         two_qubit_gates = 0 # 2-qubit gates look like 1-qubit gates to the logic (because the len(column) doesn't reflect the tuple of control and target bits)
         completed_two_qubit_gates = 0 # because of the above note, we need to keep track of whether or not we've calculate a 2-qubit gate into the column matrix
+        
+        self.sort_column(column) # sorting the column just in case it's out of order...
+
         for gate_information in column:
             if type(gate_information[1]) == tuple:
                 two_qubit_gates+=1
@@ -76,6 +80,23 @@ class Quantum_Circuit:
                 # *************** to change this to any n-qubit gate just change "i+=2" to "i+=len(gate_information[1])", i think
         # print(column_matrix, i, completed_two_qubit_gates)
         return column_matrix
+    
+    def sort_column(self, column : list) -> list:
+        # bubble sort !
+        for i in range(0,len(column)):
+            gate1 = column[i]
+            gate1_index = gate1[1] if type(gate1[1]) == int else gate1[1][0]
+
+            for j in range(0, len(column)):
+                if i == j:
+                    continue
+                gate2 = column[j]
+                gate2_index = gate2[1] if type(gate2[1]) == int else gate2[1][0]
+                if gate1_index < gate2_index:
+                    # gate1, gate2 = gate2, gate1
+                    column[i], column[j] = column[j], column[i]
+                    print(column)
+        return column    
 
     def print_matrix(self) -> None:
         init_printing()
@@ -189,8 +210,8 @@ class Quantum_Circuit:
 
 
 
-num_qubits = 2
-qc = Quantum_Circuit(num_qubits)
+num_qubits = 4
+qc = Quantum_Circuit(num_qubits, 'ibmq')
 
 
 # qc.make_column([("h",0), ("h", 1), ("h",2)])
@@ -263,7 +284,9 @@ qc.make_column([("h", 0), ("h", 1), ("h", 2), ("h", 3), ("h", 4)])
 # qc.make_column([("swap", (1,2))])
 # qc.make_column([("cz",(0,1))])
 
-qc.make_column([("h", 1), ("x", 0)])
+# qc.make_column([("x", 0), ("h", 1)])
+col = [("cx", (1,2)), ("x", 3), ("h", 0)]
+qc.make_column(col)
 
 statevector = qc.output_statevector()
 
